@@ -1,0 +1,4 @@
+service:
+  nodePorts:
+    grafana: '32003'
+  type: 'NodePort'
