@@ -1,0 +1,41 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - task_8
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  deploy-monitoring-stack:
+    runs-on: ubuntu-latest
+    env:
+      NAMESPACE: monitoring
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Kubernetes Config
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Deploy Grafana
+        run: |
+          helm upgrade --install grafana \
+            oci://registry-1.docker.io/bitnamicharts/grafana \
+            --set service.type=NodePort \
+            --set service.nodePorts.grafana=32003 \
+            --set admin.password="${{ secrets.ADMIN_PASSWORD }}" \
+            --namespace ${NAMESPACE} \
+            --create-namespace
+
+
+      - name: Verify Deployment
+        run: |
+          kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=grafana -n ${NAMESPACE} --timeout=300s
+          helm list -n ${NAMESPACE}
+          kubectl get pods -n ${NAMESPACE}
